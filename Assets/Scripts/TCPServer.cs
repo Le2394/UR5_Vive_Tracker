@@ -1,10 +1,12 @@
-using UnityEngine;
 using System;
-using System.Text;
+using System.Collections.Concurrent;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
-using System.Collections.Concurrent;
+using UnityEditor.PackageManager;
+using UnityEngine;
 
 public class TCPServer : MonoBehaviour
 {
@@ -24,6 +26,10 @@ public class TCPServer : MonoBehaviour
 
     private TcpController endPoint;
     private bool running = false;
+
+    private ConcurrentQueue<string> logQueue = new ConcurrentQueue<string>();
+    private Vector3 currentEndPointPosition = Vector3.zero;
+    private readonly object eeLock = new object();
 
     void Start()
     {
@@ -71,7 +77,22 @@ public class TCPServer : MonoBehaviour
             clientThread.Start();
         }
     }
+    void Update()
+    {
+        while (logQueue.TryDequeue(out string message))
+        {
+            Debug.Log(message);
+        }
 
+        // Update endpoint position safely
+        if (endPoint != null)
+        {
+            lock (eeLock)
+            {
+                currentEndPointPosition = endPoint.position;
+            }
+        }
+    }
     void RunStrokeServer()
     {
         while (running)
@@ -85,8 +106,9 @@ public class TCPServer : MonoBehaviour
         }
     }
 
-    void HandleJointClient()
+    private void HandleJointClient()
     {
+
         try
         {
             NetworkStream stream = jointClient.GetStream();
@@ -96,31 +118,39 @@ public class TCPServer : MonoBehaviour
             {
                 float[] jointValues = control
                     ? IK_control.joints
-                    : new float[] {
-                        IK_toolkit.Joint_1, IK_toolkit.Joint_2, IK_toolkit.Joint_3,
-                        IK_toolkit.Joint_4, IK_toolkit.Joint_5, IK_toolkit.Joint_6 };
-                float[] ee = { endPoint.endPoint.transform.position.x, endPoint.endPoint.transform.position.y, endPoint.endPoint.transform.position.z };
-                Debug.Log(jointValues[0] + " " + jointValues[1] + " " + jointValues[2] + " " +
-                        jointValues[3] + " " + jointValues[4] + " " + jointValues[5]);
-                Buffer.BlockCopy(jointValues, 0, buffer, 0, buffer.Length);
-                stream.Write(buffer, 0, buffer.Length);
+                    : new float[] { IK_toolkit.Joint_1, IK_toolkit.Joint_2, IK_toolkit.Joint_3, IK_toolkit.Joint_4, IK_toolkit.Joint_5, IK_toolkit.Joint_6 };
 
+                float[] jointValuesInRadians = new float[jointValues.Length];
+                for (int i = 0; i < jointValues.Length; i++)
+                {
+                    jointValuesInRadians[i] = jointValues[i] * Mathf.Deg2Rad;
+                }
+
+                Vector3 eePos;
+                lock (eeLock)
+                {
+                    eePos = currentEndPointPosition;
+                }
+                float[] ee = new float[] { eePos.x, eePos.y, eePos.z };
+                Buffer.BlockCopy(jointValuesInRadians, 0, buffer, 0, buffer.Length);
+                stream.Write(buffer, 0, buffer.Length);
                 Buffer.BlockCopy(ee, 0, eeBuffer, 0, eeBuffer.Length);
                 stream.Write(eeBuffer, 0, eeBuffer.Length);
-
                 stream.Flush();
 
+                logQueue.Enqueue($"Sent joint values (radians): {string.Join(", ", jointValuesInRadians)}");
+                logQueue.Enqueue($"Sending endpoint coords: {string.Join(", ", ee)}");
                 Thread.Sleep(5);
             }
         }
         catch (Exception ex)
         {
-            Debug.LogWarning($"Joint client connection lost: {ex.Message}");
+            logQueue.Enqueue($"Client connection lost: {ex.Message}");
         }
         finally
         {
             jointClient?.Close();
-            Debug.Log("Joint client disconnected.");
+            logQueue.Enqueue("Client disconnected.");
         }
     }
 
@@ -140,11 +170,11 @@ public class TCPServer : MonoBehaviour
                 Buffer.BlockCopy(new float[] { stroke }, 0, strokeBuffer, 0, 4);
                 stream.Write(strokeBuffer, 0, 4);
                 //Debug.Log($"Sent Stroke: {stroke}");
-/*
-                Buffer.BlockCopy(new float[] { theta }, 0, thetaBuffer, 0, 4);
-                stream.Write(thetaBuffer, 0, 4);
-                Debug.Log($"Sent Theta: {theta}");
-*/
+                /*
+                                Buffer.BlockCopy(new float[] { theta }, 0, thetaBuffer, 0, 4);
+                                stream.Write(thetaBuffer, 0, 4);
+                                Debug.Log($"Sent Theta: {theta}");
+                */
 
                 stream.Flush();
                 Thread.Sleep(5);

@@ -29,12 +29,14 @@ public class TcpController : MonoBehaviour
     private bool rotEnable = false;
 
     private static TcpController instance;
-    public static TcpController Instance {  get => instance; }
-    
+    public static TcpController Instance { get => instance; }
+
     private float angle;
     public float Angle { get => angle; }
 
     public float speed = 50f;
+    internal Vector3 position;
+
     private void Start()
     {
         listenThread = new Thread(StartListening);
@@ -44,7 +46,7 @@ public class TcpController : MonoBehaviour
 
     private void Awake()
     {
-        if(TcpController.instance != null) { Debug.LogError("Singleton Error!"); }
+        if (TcpController.instance != null) { Debug.LogError("Singleton Error!"); }
         TcpController.instance = this;
     }
     void StartListening()
@@ -66,11 +68,11 @@ public class TcpController : MonoBehaviour
                     string message = reader.ReadLine();
                     if (!string.IsNullOrEmpty(message))
                     {
-                        Debug.Log(message);
                         if (message.StartsWith("Angle:"))
                         {
                             string angleStr = message.Substring(6);
                             angle = float.Parse(angleStr);
+                            if (angle < 5) angle = 5;
                         }
                         if (message == "Pos") posEnable = true;
                         if (message == "Rot") rotEnable = true;
@@ -107,9 +109,9 @@ public class TcpController : MonoBehaviour
 
         if (posEnable && posOffsetCaptured)
         {
-            Vector3 targetPosition = new Vector3(-(target.position.x - controllerPosOffset.x) + endEffectorPosOffset.x,
+            Vector3 targetPosition = new Vector3((target.position.x - controllerPosOffset.x) + endEffectorPosOffset.x,
                                                   (target.position.y - controllerPosOffset.y) + endEffectorPosOffset.y,
-                                                 -(target.position.z - controllerPosOffset.z) + endEffectorPosOffset.z);
+                                                 (target.position.z - controllerPosOffset.z) + endEffectorPosOffset.z);
             endPoint.position = Vector3.Lerp(endPoint.position, targetPosition, speed * Time.deltaTime);
         }
         if (rotEnable && rotOffsetCaptured)

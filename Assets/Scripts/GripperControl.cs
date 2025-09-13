@@ -11,9 +11,9 @@ public class GripperControl : MonoBehaviour
     private const float v_min = 55.0f;
     private const float v_max = 180.0f;
 
-    private readonly float[] sensorCoefficients = new float[] { -2.40160732e-17f, 6.32505968e-16f,
-                                                                -4.62696778e-15f, 1.00000000e+01f,
-                                                                -2.90077857e-15f };
+    private readonly float[] sensorCoefficients = new float[] { -3.27240413e-19f, 2.99419163e-17f,
+                                                                -9.06959980e-16f, 2.22222222e+00f,
+                                                                -2.03054500e-14f };
 
     private readonly float[] coefficients = new float[] { 2.858763157442875e-09f, -1.443536999119206e-07f,
                                                           1.0835088633169088e-05f, 0.008994451797350918f,

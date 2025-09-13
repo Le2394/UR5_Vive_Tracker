@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Text;
@@ -23,12 +23,13 @@ public class IK_control : MonoBehaviour
 
     // UR16e robot arm Denavit-Hartenberg parameters matrix
     public static double[,] DH_matrix_UR16e = new double[6, 3] {
-        { 0, Mathf.PI / 2.0, 0.1807 },
-        { -0.4784, 0, 0 },
-        { -0.36, 0, 0 },
-        { 0, Mathf.PI / 2.0, 0.17415 },
-        { 0, -Mathf.PI / 2.0, 0.11985},
-        { 0, 0,0.11655}};
+        { 0,        Mathf.PI / 2.0, 0.089159},
+        { -0.425,   0,              0       },
+        { -0.39225, 0,              0       },
+        { 0,        Mathf.PI / 2.0, 0.10915 },
+        { 0,       -Mathf.PI / 2.0, 0.09465 },
+        { 0,        0,              0.0823  }};
+    //    a         alpha           d
 
     private void Start()
     {
@@ -108,12 +109,12 @@ public class IK_control : MonoBehaviour
             for (int i = 0; i < robotJoints.Count; i++)
             {
                 robotJoints[i].localEulerAngles = ConvertJointAngles(jointSolutions[i, solutionIndex], i);
-                joints[0] =  robotJoints[0].localEulerAngles.z;
-                joints[1] =  -robotJoints[1].localEulerAngles.y;
-                joints[2] =  -robotJoints[2].localEulerAngles.z;
-                joints[3] =  -robotJoints[3].localEulerAngles.z;
-                joints[4] =  -robotJoints[4].localEulerAngles.y;
-                joints[5] =  -robotJoints[5].localEulerAngles.y;
+                joints[0] = robotJoints[0].localEulerAngles.z;
+                joints[1] = -robotJoints[1].localEulerAngles.y;
+                joints[2] = -robotJoints[2].localEulerAngles.z;
+                joints[3] = -robotJoints[3].localEulerAngles.z;
+                joints[4] = -robotJoints[4].localEulerAngles.y;
+                joints[5] = -robotJoints[5].localEulerAngles.y;
             }
         }
         else
@@ -147,7 +148,7 @@ public class IK_control : MonoBehaviour
 
         double[,] theta = new double[6, 8];
 
-        Vector4 P05 = transform_matrix_unity * new Vector4()
+        Vector4 P05 = transform_matrix_unity * new Vector4() //transform_matrix_unity: end-effector transformation matrix
         {
             x = 0,
             y = 0,
@@ -156,6 +157,7 @@ public class IK_control : MonoBehaviour
         }; ;
         float psi = Mathf.Atan2(P05[1], P05[0]);
         float phi = Mathf.Acos((float)((DH_matrix_UR16e[1, 2] + DH_matrix_UR16e[3, 2] + DH_matrix_UR16e[2, 2]) / Mathf.Sqrt(Mathf.Pow(P05[0], 2) + Mathf.Pow(P05[1], 2))));
+        // d2 + d3 + d4 = 0 + 0 + 0.10915 = 0.10915
 
         theta[0, 0] = psi + phi + Mathf.PI / 2;
         theta[0, 1] = psi + phi + Mathf.PI / 2;
